@@ -1,6 +1,6 @@
 # SonyMute
 
-Windows tray app. Double-press the NC/AMB button on a Sony WH-1000XM5 to mute or unmute all microphones. Plays a short tone so you know which state you are in.
+Windows tray app. Double-press the NC/AMB button on a Sony WH-1000XM5 (WH-1000XM*) to mute or unmute all microphones. Plays a short tone so you know which state you are in.
 
 ## How it works
 
