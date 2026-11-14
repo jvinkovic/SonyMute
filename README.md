@@ -47,9 +47,13 @@ Left click toggles mute. Right click for the menu: status, button on/off, sounds
 | `tone_lead_ms` | `200` | silence before the tone, so Bluetooth output wakes up in time |
 | `device` | | only connect to a headset whose name contains this |
 
+## Download
+
+`SonyMute.exe` from [Releases](https://github.com/jvinkovic/SonyMute/releases). Needs the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
+
 ## Build
 
-Needs .NET 10.
+Needs the .NET 10 SDK.
 
 ```powershell
 dotnet publish -c Release -r win-x64 -o publish

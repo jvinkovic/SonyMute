@@ -1,0 +1,51 @@
+name: Release build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          $v = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { "0.0.0-ci.$env:GITHUB_RUN_NUMBER" }
+          "value=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Publish
+        run: dotnet publish -c Release -r win-x64 -o publish -p:Version=${{ steps.version.outputs.value }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: SonyMute
+          path: publish/SonyMute.exe
+
+      - name: Check tag is on main
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        run: |
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+          if ($LASTEXITCODE -ne 0) { Write-Error "$env:GITHUB_REF_NAME is not on main"; exit 1 }
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create $env:GITHUB_REF_NAME publish/SonyMute.exe --title "SonyMute $env:GITHUB_REF_NAME" --generate-notes
