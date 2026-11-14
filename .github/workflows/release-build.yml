@@ -29,12 +29,19 @@ jobs:
           "value=$v" >> $env:GITHUB_OUTPUT
 
       - name: Publish
-        run: dotnet publish -c Release -r win-x64 -o publish -p:Version=${{ steps.version.outputs.value }}
+        shell: pwsh
+        run: |
+          $v = '${{ steps.version.outputs.value }}'
+          dotnet publish -c Release -r win-x64 -o out/framework -p:Version=$v
+          dotnet publish -c Release -r win-x64 --self-contained true -o out/portable -p:Version=$v
+          New-Item -ItemType Directory dist | Out-Null
+          Copy-Item out/portable/SonyMute.exe "dist/SonyMute-$v-portable.exe"
+          Compress-Archive -Path out/framework/SonyMute.exe, release/README.txt -DestinationPath "dist/SonyMute-$v.zip"
 
       - uses: actions/upload-artifact@v7
         with:
           name: SonyMute
-          path: publish/SonyMute.exe
+          path: dist/
 
       - name: Check tag is on main
         if: github.ref_type == 'tag'
@@ -48,4 +55,4 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create $env:GITHUB_REF_NAME publish/SonyMute.exe --title "SonyMute $env:GITHUB_REF_NAME" --generate-notes
+        run: gh release create $env:GITHUB_REF_NAME (Get-ChildItem dist).FullName --title "SonyMute $env:GITHUB_REF_NAME" --generate-notes

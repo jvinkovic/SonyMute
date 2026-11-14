@@ -49,12 +49,19 @@ Left click toggles mute. Right click for the menu: status, button on/off, sounds
 
 ## Download
 
-`SonyMute.exe` from [Releases](https://github.com/jvinkovic/SonyMute/releases). Needs the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
+From [Releases](https://github.com/jvinkovic/SonyMute/releases), no installer. Pick one:
+
+- `SonyMute-<version>-portable.exe` (~70 MB): .NET runtime built in, nothing else to install.
+- `SonyMute-<version>.zip` (~0.1 MB): `SonyMute.exe` + `README.txt`. Needs the [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed (runtime only, not the SDK).
 
 ## Build
 
-Needs the .NET 10 SDK.
+Building from source needs the .NET 10 SDK. Running the result only needs the runtime.
 
 ```powershell
+# needs .NET 10 runtime on the target PC
 dotnet publish -c Release -r win-x64 -o publish
+
+# portable, runtime included
+dotnet publish -c Release -r win-x64 --self-contained true -o publish-portable
 ```
