@@ -6,7 +6,6 @@ sealed unsafe class Tray(nint hwnd, uint callbackMessage)
 {
     const uint IconId = 1;
 
-    /// <summary>Updates the icon, adding it when it is missing (first call, or after Explorer restarted).</summary>
     public void Show(nint icon, string tip)
     {
         var data = New(NIF_MESSAGE | NIF_ICON | NIF_TIP);
@@ -32,7 +31,6 @@ sealed unsafe class Tray(nint hwnd, uint callbackMessage)
         Shell_NotifyIconW(NIM_DELETE, data);
     }
 
-    /// <summary>Shows a context menu at the cursor and returns the chosen id, or 0.</summary>
     public uint Menu(ReadOnlySpan<(uint Id, string? Text, uint Flags)> items, uint defaultId)
     {
         nint menu = CreatePopupMenu();
@@ -47,7 +45,6 @@ sealed unsafe class Tray(nint hwnd, uint callbackMessage)
         return (uint)chosen;
     }
 
-    /// <summary>Draws a microphone glyph with anti-aliased edges. A slash is added when muted.</summary>
     public static nint MicIcon(bool muted, int size)
     {
         var header = new BITMAPINFOHEADER { biSize = (uint)sizeof(BITMAPINFOHEADER), biWidth = size, biHeight = -size, biPlanes = 1, biBitCount = 32 };
@@ -75,7 +72,7 @@ sealed unsafe class Tray(nint hwnd, uint callbackMessage)
         return icon;
     }
 
-    // Signed distance in unit-square coordinates: negative inside the glyph.
+    // signed distance, negative inside
     static float MicShape(float x, float y, bool muted)
     {
         float d = Segment(x, y, .5f, .22f, .5f, .40f) - .15f;

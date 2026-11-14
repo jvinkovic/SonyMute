@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 
-// Interop structs mirror Win32 layouts. Some fields are only ever written by Windows.
-#pragma warning disable CS0649
+#pragma warning disable CS0649 // filled in by Windows
 
 namespace SonyMute;
 

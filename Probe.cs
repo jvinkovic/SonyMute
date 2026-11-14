@@ -2,10 +2,6 @@ using static SonyMute.Native;
 
 namespace SonyMute;
 
-/// <summary>
-/// Diagnostic mode: logs every frame the headset sends and the named events inside them, and marks the
-/// event that toggles the mic. Used to confirm a model is supported and to find its button event name.
-/// </summary>
 static class Probe
 {
     const int StdOutput = -11;

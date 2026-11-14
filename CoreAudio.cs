@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace SonyMute;
 
-// Only the vtable slots up to the last method we call are declared. Unused slots are placeholders.
+// Only declared up to the last method used, UnusedN are vtable placeholders.
 
 public enum EDataFlow { Render, Capture, All }
 

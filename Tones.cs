@@ -8,10 +8,7 @@ static unsafe class Tones
     const int Rate = 44100;
     static readonly uint HeaderSize = (uint)sizeof(WAVEHDR);
 
-    /// <summary>
-    /// 16-bit mono PCM: one sine note per frequency, each with a short fade to avoid clicks. Leading silence
-    /// gives a sleeping Bluetooth output time to wake up so the start of the tone is not cut off.
-    /// </summary>
+    // Lead silence: a sleeping Bluetooth output would otherwise eat the start of the tone.
     public static byte[] Make(int[] notesHz, int noteMs, int leadMs, double volume)
     {
         int lead = Rate * leadMs / 1000, count = Rate * noteMs / 1000, fade = Rate / 200;
@@ -30,7 +27,7 @@ static unsafe class Tones
 
     public static int DurationMs(byte[] pcm) => pcm.Length / 2 * 1000 / Rate;
 
-    /// <summary>Plays a pinned buffer from <see cref="Make"/>. Completion arrives as MM_WOM_DONE on <paramref name="hwnd"/>.</summary>
+    // Buffer must stay pinned. Done() is called on MM_WOM_DONE.
     public static void Play(byte[] pcm, nint hwnd, bool communicationsDevice)
     {
         var format = new WAVEFORMATEX

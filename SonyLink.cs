@@ -5,11 +5,8 @@ using static SonyMute.Native;
 
 namespace SonyMute;
 
-/// <summary>
-/// Listens to Sony's headphone control channel (the "MDR" protocol the Sony app uses) over Bluetooth RFCOMM.
-/// It only sends the protocol-info request and the ACKs the protocol requires. It never changes headset settings.
-/// Protocol constants come from mos9527/SonyHeadphonesClient (libmdr).
-/// </summary>
+// Sony MDR control channel over RFCOMM. Framing and ids from mos9527/SonyHeadphonesClient (libmdr).
+// Read only: sends nothing but the protocol info request and ACKs.
 sealed unsafe class SonyLink : IDisposable
 {
     static readonly (Guid Uuid, string Version)[] Services =
@@ -31,13 +28,8 @@ sealed unsafe class SonyLink : IDisposable
     int _lastRxSeq = -1;
     byte[] _lastRxPayload = [];
 
-    /// <summary>Raised on the link thread with a short human-readable state.</summary>
+    // Both raised on the link thread.
     public event Action<string>? Status;
-
-    /// <summary>
-    /// Raised on the link thread for each named event in a LOG_NTFY_PARAM notification. Button gestures
-    /// arrive this way, for example "keyCustomBtn" (NC/AMB press) and "keyCustomBtnTwo" (double press) on the WH-1000XM5.
-    /// </summary>
     public event Action<string>? HeadsetEvent;
 
     public Action<string>? Trace;
@@ -183,7 +175,7 @@ sealed unsafe class SonyLink : IDisposable
         if (type is TypeMdr or TypeMdr2)
         {
             Send(socket, TypeAck, (byte)(1 - seq), []);
-            // Stop-and-wait protocol: a new frame flips seq, so the same seq and payload again is a resend.
+            // same seq + payload again = resend (headset didn't see our ACK in time)
             bool resend = seq == _lastRxSeq && payload.AsSpan().SequenceEqual(_lastRxPayload);
             _lastRxSeq = seq;
             _lastRxPayload = payload;
@@ -200,10 +192,7 @@ sealed unsafe class SonyLink : IDisposable
                 HeadsetEvent?.Invoke(eventName);
     }
 
-    /// <summary>
-    /// The payload is C9, a type byte, then length-prefixed ASCII strings, for example
-    /// "C9 01 0F keyCustomBtnTwo 00 00" or "C9 01 00 04 opNC 00". Empty strings are skipped.
-    /// </summary>
+    // C9, type, then length-prefixed strings: "C9 01 0F keyCustomBtnTwo 00 00", "C9 01 00 04 opNC 00"
     static List<string> LogEventNames(byte[] payload)
     {
         var names = new List<string>(2);
@@ -294,7 +283,7 @@ sealed unsafe class SonyLink : IDisposable
         return devices;
     }
 
-    /// <summary>SOCKADDR_BTH: family(2) address(8) service class id(16) port(4), packed.</summary>
+    // SOCKADDR_BTH, packed: family(2) address(8) service(16) port(4)
     sealed class BluetoothEndPoint(ulong address, Guid service) : EndPoint
     {
         public override AddressFamily AddressFamily => (AddressFamily)AF_BTH;

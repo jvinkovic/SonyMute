@@ -53,7 +53,7 @@ static unsafe class Program
             var wc = new WNDCLASSEXW { cbSize = (uint)sizeof(WNDCLASSEXW), lpfnWndProc = &WndProc, hInstance = instance, lpszClassName = className };
             RegisterClassExW(wc);
         }
-        // A hidden top-level window rather than a message-only one, so it receives the TaskbarCreated broadcast.
+        // not message-only, those don't get TaskbarCreated
         _hwnd = CreateWindowExW(0, WindowClass, "SonyMute", 0, 0, 0, 0, 0, 0, 0, instance, 0);
         _taskbarCreated = RegisterWindowMessageW("TaskbarCreated");
 
@@ -119,7 +119,7 @@ static unsafe class Program
                     SyncFromSystem();
                     return 0;
                 case WM_MIC_DEVICES:
-                    // Bluetooth reconnects fire a burst of device events. Rebind once it settles.
+                    // BT reconnect fires a burst of these
                     SetTimer(hwnd, RebindTimer, RebindDelayMs, 0);
                     return 0;
                 case WM_TIMER when (nuint)wParam == RebindTimer:
@@ -133,7 +133,7 @@ static unsafe class Program
                     Tones.Done(wParam, lParam);
                     return 0;
                 case WM_ENDSESSION when wParam != 0:
-                    // Shutdown or sign-out. Windows may end the process right after this returns.
+                    // shutdown/sign-out, process may be killed right after this
                     UnmuteOnExit(tone: false);
                     return 0;
             }
@@ -171,7 +171,7 @@ static unsafe class Program
         }
     }
 
-    /// <summary>The mute lives only as long as SonyMute. Windows would otherwise keep it, even across reboots.</summary>
+    // Windows keeps endpoint mute across reboots, so undo ours.
     static void UnmuteOnExit(bool tone)
     {
         if (!_muted || !_mic.SetAll(false))
@@ -202,7 +202,6 @@ static unsafe class Program
         Refresh();
     }
 
-    /// <summary>Follows mute changes made elsewhere: Windows settings, a keyboard mic key, another app.</summary>
     static void SyncFromSystem()
     {
         if (_mic.Muted is bool muted && muted != _muted)
@@ -211,7 +210,7 @@ static unsafe class Program
             Refresh();
     }
 
-    /// <summary>Mics came or went. A mic that appears while we are muted is muted too, so the global mute holds.</summary>
+    // a mic that shows up while muted gets muted too
     static void Rebind()
     {
         _mic.Bind();

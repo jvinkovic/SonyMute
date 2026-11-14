@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 
 namespace SonyMute;
 
-/// <summary>All active capture endpoints, muted and unmuted together.</summary>
 [ComVisible(true)]
 public sealed class Mic : IMMNotificationClient, IAudioEndpointVolumeCallback, IDisposable
 {
@@ -24,10 +23,9 @@ public sealed class Mic : IMMNotificationClient, IAudioEndpointVolumeCallback, I
 
     public int Count => _volumes.Count;
 
-    /// <summary>Active mics whose driver exposes no endpoint volume, so Windows cannot mute them.</summary>
     public IReadOnlyList<string> Unmutable => _unmutable;
 
-    /// <summary>True when every reachable mic is muted, null when there is no mic.</summary>
+    // true only if all mics are muted, null if there are none
     public bool? Muted
     {
         get
@@ -53,10 +51,7 @@ public sealed class Mic : IMMNotificationClient, IAudioEndpointVolumeCallback, I
         return Muted == mute;
     }
 
-    /// <summary>
-    /// Crash path: unmutes every active mic using fresh COM objects on the calling thread,
-    /// so it does not depend on the state of the crashing app.
-    /// </summary>
+    // Used from the crash handler, so it doesn't touch any existing state.
     public static void UnmuteAll()
     {
         try
@@ -94,22 +89,19 @@ public sealed class Mic : IMMNotificationClient, IAudioEndpointVolumeCallback, I
             }
             catch (InvalidCastException)
             {
-                // E_NOINTERFACE: seen on Intel Smart Sound mic arrays.
+                // E_NOINTERFACE, e.g. Intel Smart Sound mic array
                 _unmutable.Add(FriendlyName(device));
             }
             catch (COMException)
             {
-                // The device vanished between enumeration and activation. The next device event rebinds.
+                // device went away, next device event rebinds
             }
             Marshal.ReleaseComObject(device);
         }
         Marshal.ReleaseComObject(devices);
     }
 
-    /// <summary>
-    /// True when something is playing on the default communications output. During a Bluetooth call
-    /// that is the hands-free endpoint, and sound sent to the stereo endpoint would not be heard.
-    /// </summary>
+    // During a BT call only the hands-free endpoint is audible, stereo output goes nowhere.
     public bool CallActive()
     {
         try
@@ -183,7 +175,7 @@ public sealed class Mic : IMMNotificationClient, IAudioEndpointVolumeCallback, I
         _unmutable.Clear();
     }
 
-    // Callbacks arrive on Core Audio worker threads. They only signal the UI thread.
+    // called on Core Audio threads, just post to the UI thread
     int IAudioEndpointVolumeCallback.OnNotify(nint data) { _stateChanged(); return 0; }
     int IMMNotificationClient.OnDeviceStateChanged(string id, uint state) { _devicesChanged(); return 0; }
     int IMMNotificationClient.OnDeviceAdded(string id) { _devicesChanged(); return 0; }
