@@ -6,7 +6,7 @@ using static SonyMute.Native;
 namespace SonyMute;
 
 // Sony MDR control channel over RFCOMM. Framing and ids from mos9527/SonyHeadphonesClient (libmdr).
-// Read only: sends nothing but the protocol info request and ACKs.
+// Never changes headset settings. Sends only the protocol info request, the log notifier enable and ACKs.
 sealed unsafe class SonyLink : IDisposable
 {
     static readonly (Guid Uuid, string Version)[] Services =
@@ -17,7 +17,8 @@ sealed unsafe class SonyLink : IDisposable
 
     const byte FrameStart = 0x3E, FrameEnd = 0x3C, FrameEscape = 0x3D;
     const byte TypeAck = 0x01, TypeMdr = 0x0C, TypeMdr2 = 0x0E;
-    const byte ConnectGetProtocolInfo = 0x00, ConnectRetProtocolInfo = 0x01, LogNotifyParam = 0xC9;
+    const byte ConnectGetProtocolInfo = 0x00, ConnectRetProtocolInfo = 0x01, LogSetStatus = 0xC4, LogNotifyParam = 0xC9;
+    const byte LogTimeSeriesOperation = 0x01, Enable = 0x00;
     const uint MajorClassAudioVideo = 0x04;
 
     readonly string _nameFilter;
@@ -26,6 +27,7 @@ sealed unsafe class SonyLink : IDisposable
     Socket? _socket;
     volatile bool _enabled, _disposed;
     int _lastRxSeq = -1;
+    byte _txSeq;
     byte[] _lastRxPayload = [];
 
     // Both raised on the link thread.
@@ -126,9 +128,10 @@ sealed unsafe class SonyLink : IDisposable
     {
         lock (_gate) _socket = socket;
         _lastRxSeq = -1;
+        _txSeq = 0;
         try
         {
-            Send(socket, TypeMdr, 0, [ConnectGetProtocolInfo, 0x00]);
+            SendCommand(socket, [ConnectGetProtocolInfo, 0x00]);
             var buffer = new byte[2048];
             var frame = new List<byte>(64);
             bool inFrame = false;
@@ -186,7 +189,11 @@ sealed unsafe class SonyLink : IDisposable
             return;
 
         if (payload[0] == ConnectRetProtocolInfo)
+        {
+            // Button events only arrive while this notifier is on. It is off after some reconnects, e.g. around calls.
+            SendCommand(socket, [LogSetStatus, LogTimeSeriesOperation, Enable]);
             Status?.Invoke($"linked to {name} ({version})");
+        }
         else if (payload[0] == LogNotifyParam)
             foreach (var eventName in LogEventNames(payload))
                 HeadsetEvent?.Invoke(eventName);
@@ -207,6 +214,12 @@ sealed unsafe class SonyLink : IDisposable
             i += length;
         }
         return names;
+    }
+
+    void SendCommand(Socket socket, ReadOnlySpan<byte> payload)
+    {
+        Send(socket, TypeMdr, _txSeq, payload);
+        _txSeq ^= 1;
     }
 
     void Send(Socket socket, byte type, byte seq, ReadOnlySpan<byte> payload)
